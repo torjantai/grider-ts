@@ -1,34 +1,62 @@
-import { Eventing } from './Eventing';
-import { Sync } from './Sync';
-import { Attributes } from './Attributes';
+import { Eventing } from "./Eventing";
+import { Sync } from "./Sync";
+import { Attributes } from "./Attributes";
+import { AxiosResponse } from "axios";
 
-const DB_URL = 'http://localhost:3000/users';
-
+const DB_URL = "http://localhost:3000/users";
 
 export interface UserProps {
-    id?: number;
-    name?: string;
-    age?: number;
+  id?: number;
+  name?: string;
+  age?: number;
 }
 
 export class User {
-    public events: Eventing = new Eventing();
-    public sync: Sync<UserProps> = new Sync<UserProps>(DB_URL);
-    public attributes: Attributes<UserProps>;
+  public events: Eventing = new Eventing();
+  public sync: Sync<UserProps> = new Sync<UserProps>(DB_URL);
+  public attributes: Attributes<UserProps>;
 
-    constructor(attrs: UserProps) {
-        this.attributes = new Attributes<UserProps>(attrs);
+  constructor(attrs: UserProps) {
+    this.attributes = new Attributes<UserProps>(attrs);
+  }
+
+  get on() {
+    return this.events.on;
+  }
+
+  get trigger() {
+    return this.events.trigger;
+  }
+
+  get get() {
+    return this.attributes.get;
+  }
+
+  set(update: UserProps): void {
+    this.attributes.set(update);
+    this.events.trigger("change");
+  }
+
+  fetch(): void {
+    const id = this.get("id");
+
+    if (typeof id !== "number") {
+      throw new Error("cannot fetch without an id");
     }
 
-    get on() {
-        return this.events.on;
-    }
+    this.sync.fetch(id).then((response: AxiosResponse): void => {
+      this.set(response.data);
+    });
+  }
 
-    get trigger() {
-        return this.events.trigger;
-    }
-
-    get get() {
-        return this.attributes.get;
-    };
+  save(): void {
+    this.sync
+      .save(this.attributes.getAll())
+      .then((response: AxiosResponse) => {
+        this.trigger("save");
+      })
+      .catch(() => {
+        this.trigger("error");
+      });
+  }
 }

@@ -11,6 +11,7 @@ export class ApiSync<T extends HasId> {
     }
 
     save(data: T): AxiosPromise {
+        console.log({data});
         const { id } = data;
         if (!id) {
             return axios.post(this.rootUrl, data)
